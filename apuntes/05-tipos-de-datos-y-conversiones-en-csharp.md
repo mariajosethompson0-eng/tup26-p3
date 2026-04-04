@@ -1,4 +1,4 @@
-# Tipos de datos
+# Tipos de datos y conversiones en C#
 
 ## Objetivo de la clase
 

@@ -1,4 +1,4 @@
-# Terminal y Bash
+# Terminal y Bash para desarrollo
 
 ## ¿Qué es la terminal?
 
@@ -34,7 +34,7 @@ Por eso, aprender Bash no es solo memorizar comandos: también es entender cómo
 - **Shell**: el intérprete de comandos.
 - **Bash**: un shell concreto.
 
-En Linux, Bash es muy común. En macOS moderno, el shell por defecto suele ser **zsh**, no Bash, pero casi todos los ejemplos básicos de este apunte funcionan igual en ambos.
+En Linux, Bash es muy común. En macOS moderno, el shell por defecto suele ser **zsh**, no Bash, pero casi todos los ejemplos básicos de este apunte funcionan igual en ambos. En Windows, el shell por defecto es **CMD** o **PowerShell**, pero también podés usar Bash a través de herramientas como Git Bash o WSL.
 
 ## ¿Para qué sirve?
 

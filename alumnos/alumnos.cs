@@ -2,11 +2,43 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
+enum Estado {
+    Vacio,
+    EnProgreso,
+    Aprobado,
+    Desaprobado
+}
+
+static class EstadoExtensions {
+    public static string ToEmoji(this Estado estado) {
+        return estado switch {
+            Estado.EnProgreso  => "🟡",
+            Estado.Desaprobado => "🔴",
+            Estado.Aprobado    => "🟢",
+            Estado.Vacio       => string.Empty,
+            _ => string.Empty
+        };
+    }
+
+    public static Estado Parse(string? valor) {
+        return valor?.Trim() switch {
+            "🟡" => Estado.EnProgreso,
+            "🔴" => Estado.Desaprobado,
+            "🟢" => Estado.Aprobado,
+            "" => Estado.Vacio,
+            "-" => Estado.Vacio,
+            "—" => Estado.Vacio,
+            "⚪️" => Estado.Vacio,
+            _ => Estado.Vacio,
+        };
+    }
+}
 
 class Alumno {
     public int legajo;
@@ -16,9 +48,31 @@ class Alumno {
     public string telefono = string.Empty;
     public bool tieneFoto;
     public string gitHub = string.Empty;
+    public List<Estado> practicos = new();
+    public List<Estado> examenes = new();
 
     public string CarpetaNombre => $"{legajo} - {apellido}, {nombre}";
     public string TelefonoId => FormatearTelefonoId(telefono);
+
+    public void Practico(int numero, Estado estado){
+        if (practicos == null) { practicos = new List<Estado>(); }
+
+        while(practicos.Count < numero){
+            practicos.Add(Estado.Vacio);
+        }
+
+        practicos[numero - 1] = estado;
+    }
+    
+    public void Examen(int numero, Estado estado){
+        if (examenes == null) { examenes = new List<Estado>(); }
+
+        while(examenes.Count < numero){
+            examenes.Add(Estado.Vacio);
+        }
+
+        examenes[numero - 1] = estado;
+    }
 
     static string FormatearTelefonoId(string telefono) {
         string digitos = Regex.Replace(telefono.Trim(), @"\D", string.Empty);
@@ -111,9 +165,9 @@ class AlumnosManager {
                 Alumno? alumno = null;
 
                 if (linea.Contains("|")) {
-                    alumno = ParsearAlumnoFormatoLegado(linea);
+                    alumno = ExtraerAlumnoFormatoLegado(linea);
                 } else {
-                    alumno = ParsearAlumnoFormatoMarkdown(linea, comisionActual);
+                    alumno = ExtraerAlumnoFormatoMarkdown(linea, comisionActual);
                 }
 
                 if (alumno != null) {
@@ -127,10 +181,12 @@ class AlumnosManager {
         return alumnos;
     }
 
-    static Alumno? ParsearAlumnoFormatoLegado(string linea) {
-        string[] datos = linea.Split('|');
-        if (datos.Length < 7) {
-            return null;
+
+    static Alumno? ExtraerAlumno(string linea, string separador = "|") {
+        List<string> datos = Regex.Split(linea.TrimEnd(), @"\s*" + Regex.Escape(separador) + @"\s*").ToList();
+
+        while(datos.Count < 9){
+            datos.Add(string.Empty);
         }
 
         if (!int.TryParse(datos[0].Trim(), out int legajo)) {
@@ -142,45 +198,45 @@ class AlumnosManager {
             comision  = LimpiarCampo(datos[1]),
             nombre    = LimpiarCampo(datos[2]),
             apellido  = LimpiarCampo(datos[3]),
-            telefono  = ParsearTelefono(datos[4]),
-            tieneFoto = ParsearFoto(datos[5]),
-            gitHub    = ParsearGitHub(datos[6])
+            telefono  = ExtraerTelefono(datos[4]),
+            tieneFoto = ExtraerFoto(datos[5]),
+            gitHub    = ExtraerGitHub(datos[6]),
+            practicos = ExtraerPracticos(datos[7]),
+            examenes  = ExtraerExamenes(datos[8])
         };
     }
 
-    static Alumno? ParsearAlumnoFormatoMarkdown(string linea, string comisionActual) {
-        string[] columnas = Regex.Split(linea.TrimEnd(), @"\s{2,}");
-        if (columnas.Length < 5) {
-            return null;
+    static Alumno? ExtraerAlumnoFormatoLegado(string linea) {
+        return ExtraerAlumno(linea, "|");
+    }
+
+    static Alumno? ExtraerAlumnoFormatoMarkdown(string linea, string comisionActual) {
+        List<string> columnas = Regex.Split(linea.TrimEnd(), @"\s{2,}").ToList();
+
+        while (columnas.Count < 7) {
+            columnas.Add(string.Empty);
         }
 
         if (!int.TryParse(columnas[0].Trim(), out int legajo)) {
             return null;
         }
 
-        string apellido = string.Empty;
-        string nombre = string.Empty;
-        string nombreCompleto = LimpiarCampo(columnas[1]);
-        int indiceComa = nombreCompleto.IndexOf(',');
-
-        if (indiceComa >= 0) {
-            apellido = LimpiarCampo(nombreCompleto.Substring(0, indiceComa));
-            nombre = LimpiarCampo(nombreCompleto.Substring(indiceComa + 1));
-        } else {
-            apellido = LimpiarCampo(nombreCompleto);
-        }
+        (string apellido, string nombre) = ExtraerApellidoNombre(columnas[1]);
 
         return new Alumno {
-            legajo    = legajo,
-            comision  = LimpiarCampo(comisionActual),
-            nombre    = nombre,
-            apellido  = apellido,
-            telefono  = ParsearTelefono(columnas[2]),
-            tieneFoto = ParsearFoto(columnas[3]),
-            gitHub    = ParsearGitHub(columnas[4])
+            legajo = legajo,
+            comision = LimpiarCampo(comisionActual),
+            nombre = nombre,
+            apellido = apellido,
+            telefono = ExtraerTelefono(columnas[2]),
+            tieneFoto = ExtraerFoto(columnas[3]),
+            gitHub = ExtraerGitHub(columnas[4]),
+            practicos = ExtraerPracticos(columnas[5]),
+            examenes = ExtraerExamenes(columnas[6])
         };
     }
 
+    
     public static void Guardar(Alumnos alumnos, string rutaArchivo) {
         try {
             List<Alumno> alumnosOrdenados =  new List<Alumno>(alumnos);
@@ -204,8 +260,8 @@ class AlumnosManager {
                     comisionActual = comisionAlumno;
                     sb.AppendLine($"## {comisionActual}");
                     sb.AppendLine("```text");
-                    sb.AppendLine("Legajo  Nombre y Apellido           Telefono         Foto  Github");
-                    sb.AppendLine("------  --------------------------  ---------------  ----  --------------------");
+                    sb.AppendLine("Legajo  Nombre y Apellido           Telefono         Foto  Github                Practicos           Examenes         ");
+                    sb.AppendLine("------  --------------------------  ---------------  ----  --------------------  ------------------  ------------------");
                 }
 
                 sb.AppendLine(FormatearFila(alumno));
@@ -231,7 +287,7 @@ class AlumnosManager {
         List<Alumno> alumnosOrdenados = new List<Alumno>(alumnos);
         alumnosOrdenados.Sort(CompararAlumnos);
 
-        string encabezado = FormatearFilaTabla("Legajo", "Nombre y Apellido", "Telefono", "Foto", "GitHub", "Comision");
+        string encabezado = FormatearFilaTabla("Legajo", "Nombre y Apellido", "Telefono", "Foto", "GitHub", "Comision", "Practicos", "Examenes");
         string separador = new string('-', encabezado.Length);
         ConsoleColor colorAnterior = Console.ForegroundColor;
         Console.ForegroundColor = ConsoleColor.Blue;
@@ -248,7 +304,9 @@ class AlumnosManager {
                 FormatearTexto(alumno.telefono),
                 alumno.tieneFoto ? "Si" : "No",
                 FormatearGitHub(alumno.gitHub),
-                ObtenerComision(alumno)));
+                ObtenerComision(alumno),
+                FormatearEstados(alumno.practicos),
+                FormatearEstados(alumno.examenes)));
         }
 
         Console.WriteLine(separador);
@@ -256,15 +314,17 @@ class AlumnosManager {
         Console.WriteLine();
     }
 
-    static string FormatearFilaTabla(string legajo, string nombreApellido, string telefono, string foto, string gitHub, string comision) {
+    static string FormatearFilaTabla(string legajo, string nombreApellido, string telefono, string foto, string gitHub, string comision, string pruebas, string examenes) {
         string colLegajo         = AjustarColumna(legajo, 6);
         string colNombreApellido = AjustarColumna(nombreApellido, 26);
         string colTelefono       = AjustarColumna(telefono, 15);
         string colFoto           = AjustarColumna(foto, 4);
         string colGitHub         = AjustarColumna(gitHub, 20);
         string colComision       = AjustarColumna(comision, 10);
+        string colPruebas        = AjustarColumna(pruebas, 20);
+        string colExamenes       = AjustarColumna(examenes, 20);
 
-        return $"{colLegajo}  {colNombreApellido}  {colTelefono}  {colFoto}  {colGitHub}  {colComision}";
+        return $"{colLegajo}  {colNombreApellido}  {colTelefono}  {colFoto}  {colGitHub}  {colComision}  {colPruebas}  {colExamenes}";
     }
 
     
@@ -297,8 +357,10 @@ class AlumnosManager {
         string telefono       = AjustarColumna(FormatearTexto(alumno.telefono), 15);
         string foto           = AjustarColumna(alumno.tieneFoto ? "Si" : "No", 4);
         string gitHub         = AjustarColumna(FormatearGitHub(alumno.gitHub), 20);
+        string pruebas        = AjustarColumna(FormatearEstados(alumno.practicos, 10));
+        string examenes       = AjustarColumna(FormatearEstados(alumno.examenes, 10));
 
-        return $"{legajo}  {nombreApellido}  {telefono}  {foto}  {gitHub}";
+        return $"{legajo}  {nombreApellido}  {telefono}  {foto}  {gitHub}  {pruebas}  {examenes}";
     }
 
     static string ObtenerNombreApellido(Alumno alumno) {
@@ -316,7 +378,7 @@ class AlumnosManager {
         return $"{apellido}, {nombre}";
     }
 
-    static string AjustarColumna(string texto, int ancho) {
+    static string AjustarColumna(string texto, int ancho=20) {
         string valor = FormatearTexto(texto);
 
         if (valor.Length > ancho) {
@@ -336,39 +398,85 @@ class AlumnosManager {
 
     static string LimpiarCampo(string texto) {
         string valor = texto.Trim();
-
-        if (valor == "—" || valor == "-") {
-            return string.Empty;
-        }
-
+        if (valor == "—") { return string.Empty; }
         return valor;
     }
 
-    static string ParsearTelefono(string texto) {
+    static string ExtraerTelefono(string texto) {
         return LimpiarCampo(texto);
     }
 
-    static string ParsearGitHub(string texto) {
-        string valor = LimpiarCampo(texto);
+    static (string, string) ExtraerApellidoNombre(string nombreCompleto) {
+        string apellido , nombre;
+        var partes = nombreCompleto.Split(',', 2);
 
-        if (string.Equals(valor, "No", StringComparison.OrdinalIgnoreCase)) {
-            return string.Empty;
+        if (partes.Length == 2) {
+            apellido = LimpiarCampo(partes[0]);
+            nombre   = LimpiarCampo(partes[1]);
+        } else {
+            apellido = LimpiarCampo(nombreCompleto);
+            nombre = "";
         }
 
+        return (apellido, nombre);
+    }
+
+    static string ExtraerGitHub(string texto) {
+        string valor = LimpiarCampo(texto);
+        if (string.Equals(valor, "No", StringComparison.OrdinalIgnoreCase)) { return string.Empty; }
         return valor;
     }
 
     static string FormatearGitHub(string gitHub) {
-        if (string.IsNullOrWhiteSpace(gitHub)) {
-            return "-";
-        }
-
+        if (string.IsNullOrWhiteSpace(gitHub)) { return "-"; }
         return gitHub.Trim();
     }
 
-    static bool ParsearFoto(string texto) {
+    static string FormatearEstados(List<Estado> estados, int maxEstados = 20) {
+        string valor = "";
+        if (estados != null && estados.Count > 0) {
+            valor = string.Join("", estados.Select(e => e.ToEmoji()));
+        }
+        valor = valor.Replace(" ", "⚪️");
+        while (StringInfo.ParseCombiningCharacters(valor).Length < maxEstados) {
+            valor += "⚪️";         
+        }
+        return valor;
+    }
+
+    static List<Estado> ParsearEstados(string texto) {
+        string valor = texto.Trim();
+
+        if (string.IsNullOrWhiteSpace(valor) || valor == "-" || valor == "—") {
+            return new List<Estado>();
+        }
+
+        List<Estado> estados = new List<Estado>();
+        TextElementEnumerator enumerador = StringInfo.GetTextElementEnumerator(valor);
+
+        while (enumerador.MoveNext()) {
+            string elemento = enumerador.GetTextElement();
+            Estado estado = EstadoExtensions.Parse(elemento);
+
+            if (estado != Estado.Vacio) {
+                estados.Add(estado);
+            }
+        }
+
+        return estados;
+    }
+
+    static bool ExtraerFoto(string texto) {
         return string.Equals(texto.Trim(), "Si", StringComparison.OrdinalIgnoreCase) ||
                string.Equals(texto.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    static List<Estado> ExtraerPracticos(string pruebas){
+        return ParsearEstados(pruebas);
+    } 
+
+    static List<Estado> ExtraerExamenes(string examenes){
+        return ParsearEstados(examenes);
     }
 
     static bool TieneMismoLegajo(string nombreCarpeta, int legajo) {
@@ -599,7 +707,9 @@ class AlumnosManager {
                 sb.AppendLine($"    \"apellido\": \"{EscaparJson(alumno.apellido)}\",");
                 sb.AppendLine($"    \"telefono\": \"{EscaparJson(alumno.telefono)}\",");
                 sb.AppendLine($"    \"tieneFoto\": {alumno.tieneFoto.ToString().ToLowerInvariant()},");
-                sb.AppendLine($"    \"gitHub\": \"{EscaparJson(alumno.gitHub)}\"");
+                sb.AppendLine($"    \"gitHub\": \"{EscaparJson(alumno.gitHub)}\",");
+                sb.AppendLine($"    \"practicos\": [ {string.Join(", ", alumno.practicos.Select(p => string.Concat(((char)34).ToString(), p.ToEmoji(), ((char)34).ToString())))} ],");
+                sb.AppendLine($"    \"examenes\": [ {string.Join(", ", alumno.examenes.Select(e => string.Concat(((char)34).ToString(), e.ToEmoji(), ((char)34).ToString())))} ]");
                 sb.Append("  }");
 
                 if (i < alumnos.Count - 1) {
@@ -1077,43 +1187,47 @@ class Program {
 
     
     static void Main(string[] args) {
-        var rutaPerfiles = "../material-docente/perfil/perfiles";
-        var rutaSalida = "alumnos.md";
         Alumnos alumnos = AlumnosManager.CargarAlumnos( "alumnos.md");
-        AlumnosManager.ActualizarDesdePerfiles(alumnos, rutaPerfiles);
-        // AlumnosManager.Guardar(alumnos, rutaSalida);
-        // AlumnosManager.GuardarJSON(alumnos, "alumnos.json");
-        // AlumnosManager.GuardarVCard(alumnos, "alumnos.vcf");
-        // AlumnosManager.CrearCarpetas(alumnos);
-        AlumnosManager.CopiarFotoPerfil(alumnos, rutaPerfiles);
+        alumnos[2].Practico(3, Estado.Aprobado);
+        alumnos[2].Examen(5, Estado.Desaprobado);
 
-        // var sinFoto = alumnos.SinFotos();
-        // AlumnosManager.Guardar(sinFoto, "alumnos-sin-foto.md");
+        alumnos[10].Practico(5, Estado.EnProgreso);   
+        AlumnosManager.Listar(alumnos);
+        AlumnosManager.Guardar(alumnos, "alumnos.md");
+        // AlumnosManager.ActualizarDesdePerfiles(alumnos, "../material-docente/perfil/perfiles");
+        // // AlumnosManager.Guardar(alumnos, "alumnos.md");
+        // // AlumnosManager.GuardarJSON(alumnos, "alumnos.json");
+        // // AlumnosManager.GuardarVCard(alumnos, "alumnos.vcf");
+        // // AlumnosManager.CrearCarpetas(alumnos);
+        // AlumnosManager.CopiarFotoPerfil(alumnos, rutaPerfiles);
 
-        // var sinTelefono = alumnos.SinTelefono();
-        // AlumnosManager.Guardar(sinTelefono, "alumnos-sin-telefono.md");
+        // // var sinFoto = alumnos.SinFotos();
+        // // AlumnosManager.Guardar(sinFoto, "alumnos-sin-foto.md");
 
-        // var sinGitHub = alumnos.FiltrarSinGithub();
-        // AlumnosManager.Guardar(sinGitHub, "alumnos-sin-github.md");
+        // // var sinTelefono = alumnos.SinTelefono();
+        // // AlumnosManager.Guardar(sinTelefono, "alumnos-sin-telefono.md");
+
+        // // var sinGitHub = alumnos.FiltrarSinGithub();
+        // // AlumnosManager.Guardar(sinGitHub, "alumnos-sin-github.md");
 
 
-        WAppService wapp = new WAppService();
-        Console.WriteLine("Enviando mensaje al grupo de WhatsApp...");
+        // WAppService wapp = new WAppService();
+        // Console.WriteLine("Enviando mensaje al grupo de WhatsApp...");
 
-        Alumnos alumnosConTelefonoComision7 = alumnos.EnComision("C7").SinTelefono();
-        AlumnosManager.Listar(alumnosConTelefonoComision7);
+        // Alumnos alumnosConTelefonoComision7 = alumnos.EnComision("C7").SinTelefono();
+        // AlumnosManager.Listar(alumnosConTelefonoComision7);
 
-        Alumnos alumnosConTelefonoComision9 = alumnos.EnComision("C9").SinTelefono();
+        // Alumnos alumnosConTelefonoComision9 = alumnos.EnComision("C9").SinTelefono();
         
-        AlumnosManager.Listar(alumnosConTelefonoComision9);
-        // wapp.InvitarGrupoComision(alumnos);
+        // AlumnosManager.Listar(alumnosConTelefonoComision9);
+        // // wapp.InvitarGrupoComision(alumnos);
 
-        AlumnosManager.Listar(alumnos.ParaAgregar());
+        // AlumnosManager.Listar(alumnos.ParaAgregar());
 
-        // AlumnosManager.GuardarVCard(alumnos.ParaAgregar().EnComision("C7"), "alumnos-agregar-c7.vcf");
-        // AlumnosManager.GuardarVCard(alumnos.ParaAgregar().EnComision("C9"), "alumnos-agregar-c9.vcf");
-        // wapp.InvitarGrupoComision(alumnos.ParaAgregar());
-        AlumnosManager.CopiarEnunciadoPracticos(alumnos, "tp1");
+        // // AlumnosManager.GuardarVCard(alumnos.ParaAgregar().EnComision("C7"), "alumnos-agregar-c7.vcf");
+        // // AlumnosManager.GuardarVCard(alumnos.ParaAgregar().EnComision("C9"), "alumnos-agregar-c9.vcf");
+        // // wapp.InvitarGrupoComision(alumnos.ParaAgregar());
+        // AlumnosManager.CopiarEnunciadoPracticos(alumnos, "tp1");
     }
 }
 

@@ -1,13 +1,12 @@
-# Listado de Alumnos de TUP 2026 - Programación III
+# TUP 2026 - Programación III
 
-Este en un cambio que hago en mi rama (brach)
 ## C7
 ```text
-Legajo  Nombre y Apellido           Telefono         Foto  Github
-------  --------------------------  ---------------  ----  --------------------
-63456   Avila Lahr, Joaquin         (381) 527-6836   Si    -                   
-63415   Chavez, Lucas Francisco     (381) 301-3490   Si    -                   
-63268   Condori, Karina Edith       (381) 412-4723   Si    -                   
+Legajo  Nombre y Apellido           Telefono         Foto  Github                Practicos          Examenes
+------  --------------------------  ---------------  ----  --------------------  -----------------  ----------------------
+63456   Avila Lahr, Joaquin         (381) 527-6836   Si    -                     🟢🔴🟡🟡🟡🟡         -
+63415   Chavez, Lucas Francisco     (381) 301-3490   Si    -                     -                  🟢🔴🟡🟢🔴
+63268   Condori, Karina Edith       (381) 412-4723   Si    -                         
 63402   Condori, Nahuel Ariel       (381) 341-9689   No    -                   
 63419   Coronel, Tomis              (381) 678-0335   Si    -                   
 63241   Cortez, Josias              (381) 665-0808   No    josias57455         

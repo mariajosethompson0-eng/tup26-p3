@@ -1,4 +1,4 @@
-# Trabajar con archivos de texto
+# Archivos de texto, rutas y encoding en C#
 
 Para trabajar con archivos debemos usar:
 -   `File` = cosas de **archivos**    

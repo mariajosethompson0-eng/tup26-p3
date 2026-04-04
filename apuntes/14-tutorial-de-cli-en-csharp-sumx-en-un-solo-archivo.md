@@ -1,4 +1,4 @@
-# Tutorial: CLI en C# con un solo archivo — `sumx`
+# Tutorial de CLI en C#: `sumx` en un solo archivo
 
 > **Para quién es este tutorial:** Desarrolladores con conocimiento básico de C# que quieran aprender a construir herramientas de línea de comandos reales, siguiendo un diseño limpio y progresivo.
 

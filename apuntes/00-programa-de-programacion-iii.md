@@ -1,4 +1,4 @@
-# Plan de Programación III
+# Programa de Programación III
 
 ## 1. C#
 

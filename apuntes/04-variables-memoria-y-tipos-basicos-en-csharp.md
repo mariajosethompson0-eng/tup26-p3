@@ -1,4 +1,4 @@
-# Declaración de variables
+# Variables, memoria y tipos básicos en C#
 
 ## Introducción
 

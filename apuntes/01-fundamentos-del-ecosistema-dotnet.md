@@ -1,4 +1,4 @@
-# .NET y su ecosistema
+# Fundamentos del ecosistema .NET
 
 ## Objetivo de la clase
 

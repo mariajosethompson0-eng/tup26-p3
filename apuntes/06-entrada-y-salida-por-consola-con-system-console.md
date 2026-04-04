@@ -1,4 +1,4 @@
-# System.Console
+# Entrada y salida por consola con System.Console
 
 La clase Console es una clase estática que proporciona métodos para interactuar con la consola. Permite leer y escribir texto, así como controlar la apariencia de la consola.
 
@@ -106,4 +106,3 @@ Tambien se pueden encadenar comandos para redirigir la salida de un comando a ot
 dotnet run | findstr "error"
 // Redirige la salida de dotnet run al comando findstr para buscar la palabra "error"
 ``` 
-
